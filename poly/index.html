@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poly-Labor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Studio-Gerät bei Nacht: dunkle Platte, Spurfarben wie im D&B-Tab. Kreis links, Werkzeug rechts, Gesamtverlauf darunter. */
+  --platte: #121317;
+  --feld: #1b1d23;
+  --kante: #2c2f38;
+  --text: #e6e7ec;
+  --leise: #8b8f9c;
+  --akzent: #7dd3fc;
+  --treffer: #fde68a;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--platte); color: var(--text); font-family: var(--body); font-size: 15px; }
+button, select, input { font: inherit; color: inherit; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+.seite { max-width: 1400px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 34px; letter-spacing: .02em; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: .03em; margin: 0; text-transform: uppercase; color: var(--leise); }
+.kopf { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.kopf p { margin: 0; color: var(--leise); max-width: 62ch; }
+.leiste { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; background: var(--feld); border: 1px solid var(--kante); border-radius: 10px; }
+.knopf { min-height: 40px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--kante); background: #23262e; cursor: pointer; }
+.knopf:hover { background: #2b2f39; }
+.knopf.gross { min-height: 48px; padding: 0 22px; font-family: var(--display); font-size: 22px; font-weight: 700; letter-spacing: .04em; }
+.knopf.an { background: #0c4a6e; border-color: var(--akzent); }
+.knopf.klein { min-height: 32px; padding: 0 9px; font-size: 13px; }
+select, input[type=number] { min-height: 36px; background: #23262e; border: 1px solid var(--kante); border-radius: 8px; padding: 0 8px; }
+label.feld { display: flex; align-items: center; gap: 6px; color: var(--leise); font-size: 13px; }
+.zahl { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--text); }
+.bpm { font-family: var(--mono); font-size: 26px; font-weight: 600; min-width: 4.2ch; text-align: right; }
+.haupt { display: grid; grid-template-columns: minmax(300px, 440px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .haupt { grid-template-columns: 1fr; } }
+.karte { background: var(--feld); border: 1px solid var(--kante); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.kreisbox { position: relative; }
+#kreis { width: 100%; aspect-ratio: 1; display: block; touch-action: manipulation; }
+.unterkreis { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.erklaerung { color: var(--leise); line-height: 1.45; max-width: 70ch; margin: 0; }
+.erklaerung b { color: var(--text); font-weight: 600; }
+.befund { font-family: var(--mono); font-size: 13px; color: var(--treffer); line-height: 1.5; }
+.spur { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 10px; border: 1px solid var(--kante); background: #16181d; }
+.spur.stumm { opacity: .5; }
+.spurkopf { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.punkt { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--farbe); background: var(--farbe); cursor: pointer; flex: none; }
+.spur.stumm .punkt { background: transparent; }
+.zellen { display: grid; gap: 3px; }
+.zelle { height: 34px; border-radius: 5px; border: 1px solid #343844; background: #20232a; cursor: pointer; padding: 0; position: relative; }
+.zelle.eins { border-color: #555b6b; }
+.zelle.an { background: var(--farbe); border-color: transparent; }
+.zelle.jetzt { box-shadow: 0 0 0 2px #fff inset; }
+.zelle span { position: absolute; left: 3px; top: 1px; font-size: 10px; color: #6b7080; font-family: var(--mono); pointer-events: none; }
+.zelle.an span { color: rgba(0,0,0,.55); }
+.verlaufbox { overflow-x: auto; border-radius: 8px; border: 1px solid var(--kante); background: #101115; }
+#verlauf, #modband { display: block; }
+.hinweis { font-size: 13px; color: var(--leise); margin: 0; }
+.tipp { min-width: 120px; min-height: 64px; border-radius: 12px; border: 1px dashed #5b6070; background: #1f2229; font-family: var(--display); font-size: 20px; letter-spacing: .05em; cursor: pointer; touch-action: manipulation; }
+.tipp:active { background: #2e3340; }
+.reiter { display: flex; flex-wrap: wrap; gap: 6px; }
+.modbox[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="seite">
+  <header class="kopf">
+    <h1>Poly-Labor</h1>
+    <p>Experimentierkasten für Polyrhythmik, Polymetrik und metrische Modulation. Nur zum Sehen, Hören und Ausprobieren; nichts hier verändert SO oder D&amp;B.</p>
+  </header>
+
+  <div class="leiste" role="toolbar" aria-label="Wiedergabe">
+    <button id="start" class="knopf gross" type="button">▶ Start</button>
+    <label class="feld" for="tempo">Tempo
+      <input id="tempo" type="range" min="60" max="200" step="0.5" value="174" style="width:160px">
+    </label>
+    <span id="bpmAnz" class="bpm" aria-live="off">174</span><span class="hinweis">BPM</span>
+    <button class="knopf klein" type="button" data-bpm="87">87</button>
+    <button class="knopf klein" type="button" data-bpm="116">116</button>
+    <button class="knopf klein" type="button" data-bpm="130.5">130,5</button>
+    <button class="knopf klein" type="button" data-bpm="174">174</button>
+    <span style="flex:1"></span>
+    <label class="feld" for="beispiel">Beispiel
+      <select id="beispiel"></select>
+    </label>
+    <label class="feld" for="dnbVorlage">D&amp;B-Vorlage
+      <select id="dnbVorlage"></select>
+    </label>
+  </div>
+
+  <div class="haupt">
+    <section class="karte" aria-label="Kreis">
+      <div class="unterkreis">
+        <h2 style="margin-right:auto">Kreis</h2>
+        <div class="reiter" role="group" aria-label="Was ein Umlauf bedeutet">
+          <button id="kTakt" class="knopf klein an" type="button" title="Ein Umlauf = ein Takt. Bei Polymetrik wandern die Muster von Takt zu Takt.">1 Umlauf = 1 Takt</button>
+          <button id="kMuster" class="knopf klein" type="button" title="Jeder Ring läuft in der Länge seines eigenen Musters um.">1 Umlauf = eigenes Muster</button>
+        </div>
+      </div>
+      <div class="kreisbox"><canvas id="kreis" aria-label="Kreisdarstellung der Spuren"></canvas></div>
+      <div class="unterkreis">
+        <button id="tipp" class="tipp" type="button" title="Mitklopfen: Taste T oder hier tippen. Deine Schläge erscheinen als weiße Striche außen am Kreis.">Mitklopfen</button>
+        <p class="hinweis" style="max-width:30ch">Klopf mit (Taste <b>T</b> oder hier tippen). Deine Schläge erscheinen außen am Kreis und verblassen langsam.</p>
+      </div>
+    </section>
+
+    <section class="karte" aria-label="Spuren">
+      <div class="unterkreis">
+        <h2 style="margin-right:auto">Spuren</h2>
+        <button id="neueSpur" class="knopf klein" type="button">+ Spur</button>
+      </div>
+      <p id="erklaerung" class="erklaerung"></p>
+      <div id="befund" class="befund"></div>
+      <div id="spuren" style="display:flex;flex-direction:column;gap:8px"></div>
+    </section>
+  </div>
+
+  <section class="karte" aria-label="Gesamtverlauf">
+    <div class="unterkreis">
+      <h2 style="margin-right:auto">Gesamtverlauf</h2>
+      <span id="zyklusAnz" class="hinweis"></span>
+    </div>
+    <div class="verlaufbox"><canvas id="verlauf" aria-label="Ganzer Zyklus bis alle Spuren wieder zusammen auf der Eins sind"></canvas></div>
+    <p class="hinweis">Ein Kästchen = ein Takt. Gelbe Linie: zwei oder mehr Spuren schlagen gleichzeitig. Heller Balken: alle Spuren gemeinsam.</p>
+  </section>
+
+  <section class="karte" aria-label="Metrische Modulation">
+    <div class="unterkreis">
+      <h2 style="margin-right:auto">Metrische Modulation</h2>
+      <button id="modAn" class="knopf klein" type="button">aus</button>
+    </div>
+    <div id="modbox" class="modbox" hidden>
+      <div class="unterkreis">
+        <label class="feld" for="modArt">Wechsel
+          <select id="modArt"></select>
+        </label>
+        <label class="feld" for="modA">Takte A <input id="modA" type="number" min="1" max="16" value="2" style="width:64px"></label>
+        <label class="feld" for="modB">Takte B <input id="modB" type="number" min="1" max="16" value="2" style="width:64px"></label>
+        <button id="bruecke" class="knopf klein an" type="button" title="Spielt den Notenwert, der beim Wechsel gleich bleibt, durchgehend als Klick.">Brücken-Klick an</button>
+        <span id="modTempi" class="befund"></span>
+      </div>
+      <div class="verlaufbox" style="margin-top:10px"><canvas id="modband" aria-label="Zeitstrahl der Abschnitte A und B in echter Dauer"></canvas></div>
+      <p class="hinweis" style="margin-top:8px">Abschnitt A im Grundtempo, Abschnitt B im neuen Tempo, dann wieder A. Der Zeitstrahl zeigt echte Dauer: graue Striche sind Viertel, blaue Punkte der Brücken-Klick. Der Klick läuft über den Wechsel hinweg im selben Abstand weiter.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+// ---------- Daten aus D&B ----------
+const MODULATIONEN = [
+  ["q3", "Viertel-Triole → Viertel (×3/2)", 3 / 2],
+  ["q3r", "Viertel → Viertel-Triole (×2/3)", 2 / 3],
+  ["p8", "punkt. Achtel → Viertel (×4/3)", 4 / 3],
+  ["p8r", "Viertel → punkt. Achtel (×3/4)", 3 / 4],
+  ["q5", "Viertel-Quintole → Viertel (×5/4)", 5 / 4],
+  ["q5r", "Viertel → Viertel-Quintole (×4/5)", 4 / 5],
+  ["half", "Halbe → Viertel (Halftime, ×1/2)", 1 / 2],
+  ["dbl", "Achtel → Viertel (Doubletime, ×2)", 2],
+];
+const DNB = [
+  ["Grundlagen", {
+    basis: { n: "Nur Kick + Snare", kick: [0, 10], snare: [4, 12], ghost: [], hat: [], bass: [0] },
+    two: { n: "Two-step", kick: [0, 10], snare: [4, 12], ghost: [], hat: [2, 6, 10, 14], bass: [0, 10] },
+    roll: { n: "Rollender Beat", kick: [0, 10], snare: [4, 12], ghost: [7, 9, 15], hat: [0, 2, 3, 6, 8, 10, 11, 14], bass: [0, 3, 10, 13] },
+    half: { n: "Halftime", kick: [0, 10], snare: [8], ghost: [], hat: [0, 4, 8, 12], bass: [0, 10] },
+  }],
+  ["Two-Step-Varianten", {
+    twoGhost: { n: "Two-step mit Ghosts", kick: [0, 10], snare: [4, 12], ghost: [7, 14], hat: [2, 6, 10, 14], bass: [0, 10] },
+    twoAcht: { n: "Two-step, Achtel-HiHat", kick: [0, 10], snare: [4, 12], ghost: [], hat: [0, 2, 4, 6, 8, 10, 12, 14], bass: [0, 10] },
+    twoDopp: { n: "Two-step, Doppelkick", kick: [0, 2, 10], snare: [4, 12], ghost: [], hat: [0, 2, 4, 6, 8, 10, 12, 14], bass: [0, 2, 10] },
+    twoSynk: { n: "Two-step, synkopiert", kick: [0, 6, 10], snare: [4, 12], ghost: [], hat: [2, 6, 10, 14], bass: [0, 6, 10] },
+    steppy: { n: "Steppy / Dancefloor", kick: [0, 3, 10], snare: [4, 12], ghost: [], hat: [2, 6, 10, 14], bass: [0, 3, 10] },
+    liquid: { n: "Liquid (sanft)", kick: [0, 10], snare: [4, 12], ghost: [11], hat: [0, 2, 4, 6, 8, 10, 12, 14, 15], bass: [0, 7, 10] },
+  }],
+  ["Breakbeat / Jungle", {
+    amen: { n: "Amen-Gefühl", kick: [0, 2, 10, 11], snare: [4, 7, 9, 12, 15], ghost: [], hat: [0, 2, 4, 6, 8, 10, 12, 14], bass: [0, 10] },
+    think: { n: "Think-Gefühl", kick: [0, 6, 10], snare: [4, 12], ghost: [9, 14], hat: [0, 2, 3, 4, 6, 8, 10, 11, 12, 14], bass: [0, 6, 10] },
+    jungle: { n: "Jungle rollend", kick: [0, 10], snare: [4, 12], ghost: [6, 7, 13, 15], hat: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], bass: [0, 6, 10] },
+    jungleK: { n: "Jungle, Kick verschoben", kick: [0, 3, 8, 11], snare: [4, 12], ghost: [14], hat: [0, 2, 4, 6, 8, 10, 12, 14], bass: [0, 3, 8, 11] },
+  }],
+  ["Halftime / Neuro", {
+    halfGhost: { n: "Halftime mit Ghosts", kick: [0, 3, 10], snare: [8], ghost: [14], hat: [0, 2, 4, 6, 8, 10, 12, 14], bass: [0, 3, 10] },
+    halfZaeh: { n: "Halftime schleppend", kick: [0, 11], snare: [8], ghost: [], hat: [0, 4, 8, 12], bass: [0] },
+    minimal: { n: "Minimal / luftig", kick: [0, 10], snare: [8], ghost: [5, 13], hat: [2, 6, 10, 14], bass: [0, 10] },
+    neuro: { n: "Neuro stampfend", kick: [0, 1, 10], snare: [4, 12], ghost: [], hat: [2, 6, 10, 14], bass: [0, 1, 6, 10, 11] },
+    jumpup: { n: "Jump-Up", kick: [0, 10], snare: [4, 12], ghost: [], hat: [2, 6, 10, 14], bass: [0, 2, 3, 10, 12] },
+  }],
+];
+const DNB_FLACH = Object.fromEntries(DNB.flatMap(([, g]) => Object.entries(g)));
+
+// ---------- Klänge ----------
+const KLAENGE = { kick: "Kick", snare: "Snare", hat: "HiHat", rim: "Rim", clap: "Clap", bass: "Sub-Bass", glocke: "Glocke", holz: "Holzblock" };
+const FARBEN = ["#a78bfa", "#2dd4bf", "#fbbf24", "#fb7185", "#7dd3fc", "#a3e635"];
+const TEILUNGEN = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 20, 24, 32];
+const MAX_ZELLEN = 32;
+
+// ---------- Hilfen ----------
+const ggT = (a, b) => (b ? ggT(b, a % b) : a);
+const kgV = (a, b) => (a / ggT(a, b)) * b;
+const euklid = (k, n) => Array.from({ length: n }, (_, i) => ((i * k) % n) < k);
+const anIdx = (arr, n) => Array.from({ length: n }, (_, i) => arr.includes(i));
+const bruch = (z, n) => { const g = ggT(z, n); z /= g; n /= g; return n === 1 ? String(z) : (z > n ? `${Math.floor(z / n)} ${z % n}/${n}` : `${z}/${n}`); };
+
+// ---------- Zustand ----------
+let st = {
+  bpm: 174, kreis: "takt",
+  spuren: [],
+  mod: { an: false, art: "q3", a: 2, b: 2, bruecke: true },
+  thema: "rhythmus",
+};
+let nextId = 1;
+function spur(klang, teil, len, hits, laut = 0.8) {
+  return { id: nextId++, klang, teil, len, hits: hits.slice(0, len), stumm: false, laut };
+}
+
+// ---------- Beispiele ----------
+const BEISPIELE = [
+  ["Polyrhythmik", [
+    ["p32", "3 gegen 2", "rhythmus", 120, () => [spur("kick", 2, 2, [1, 1]), spur("rim", 3, 3, [1, 1, 1])]],
+    ["p34", "3 gegen 4", "rhythmus", 120, () => [spur("kick", 4, 4, [1, 1, 1, 1]), spur("holz", 3, 3, [1, 1, 1])]],
+    ["p54", "5 gegen 4", "rhythmus", 110, () => [spur("kick", 4, 4, [1, 1, 1, 1]), spur("glocke", 5, 5, [1, 1, 1, 1, 1], 0.5)]],
+    ["p74", "7 gegen 4", "rhythmus", 100, () => [spur("kick", 4, 4, [1, 1, 1, 1]), spur("rim", 7, 7, Array(7).fill(1))]],
+    ["p345", "3 gegen 4 gegen 5", "rhythmus", 96, () => [spur("kick", 4, 4, [1, 1, 1, 1]), spur("holz", 3, 3, [1, 1, 1]), spur("glocke", 5, 5, Array(5).fill(1), 0.5)]],
+    ["pdnb", "Two-step + Viertel-Triolen", "rhythmus", 174, () => [...dnbSpuren("two"), spur("glocke", 6, 6, Array(6).fill(1), 0.45)]],
+  ]],
+  ["Polymetrik", [
+    ["m43", "4er gegen 3er (Achtel)", "metrik", 140, () => [spur("kick", 8, 4, [1, 0, 0, 0]), spur("rim", 8, 3, [1, 0, 0])]],
+    ["mhat3", "Two-step + 3er-HiHat", "metrik", 174, () => { const s = dnbSpuren("two"); s[2] = spur("hat", 16, 3, [1, 0, 0], 0.5); return s; }],
+    ["mbass5", "Two-step + 5er-Bass", "metrik", 174, () => { const s = dnbSpuren("basis"); s[3] = spur("bass", 16, 5, [1, 0, 0, 1, 0]); s.splice(2, 0, spur("hat", 16, 16, euklid(4, 16).map((x, i) => i % 4 === 2), 0.4)); return s; }],
+    ["mklave", "Tresillo 3/8 gegen 4/4", "metrik", 120, () => [spur("kick", 4, 4, [1, 1, 1, 1]), spur("holz", 8, 8, euklid(3, 8)), spur("rim", 16, 6, [1, 0, 0, 1, 0, 0])]],
+    ["m567", "5, 6 und 7 Schritte", "metrik", 130, () => [spur("kick", 16, 16, anIdx([0, 10], 16)), spur("rim", 16, 5, [1, 0, 0, 0, 0]), spur("holz", 16, 6, [1, 0, 0, 0, 0, 0]), spur("glocke", 16, 7, [1, 0, 0, 0, 0, 0, 0], 0.45)]],
+  ]],
+  ["Metrische Modulation", [
+    ["mm116", "116 → 174: Triolen werden zu Vierteln", "modulation", 116, () => dnbSpuren("two"), { art: "q3", a: 2, b: 2 }],
+    ["mm174", "174 → 116: Viertel werden zu Triolen", "modulation", 174, () => dnbSpuren("two"), { art: "q3r", a: 2, b: 2 }],
+    ["mm130", "130,5 → 174: punktierte Achtel werden zu Vierteln", "modulation", 130.5, () => dnbSpuren("two"), { art: "p8", a: 2, b: 2 }],
+    ["mmhalf", "174 ↔ Halftime", "modulation", 174, () => dnbSpuren("two"), { art: "half", a: 2, b: 2 }],
+  ]],
+];
+const BEISPIEL_FLACH = Object.fromEntries(BEISPIELE.flatMap(([, l]) => l.map((b) => [b[0], b])));
+function dnbSpuren(key) {
+  const d = DNB_FLACH[key];
+  const snare = [...new Set([...(d.snare || []), ...(d.ghost || [])])];
+  return [
+    spur("kick", 16, 16, anIdx(d.kick, 16), 0.95),
+    spur("snare", 16, 16, anIdx(snare, 16), 0.7),
+    spur("hat", 16, 16, anIdx(d.hat, 16), 0.45),
+    spur("bass", 16, 16, anIdx(d.bass, 16), 0.7),
+  ];
+}
+const ERKL = {
+  rhythmus: "<b>Polyrhythmik</b>: Die Spuren teilen denselben Takt unterschiedlich auf, zum Beispiel 3 Schläge gegen 4 im selben Takt. Auf der Eins treffen sie sich jeden Takt. Ändere die <b>Teilung</b> einer Spur, um andere Verhältnisse zu hören.",
+  metrik: "<b>Polymetrik</b>: Die Spuren haben dasselbe Raster, aber ihre Muster sind verschieden lang. Ein 3er-Muster im 16tel-Raster beginnt in jedem Takt an einer anderen Stelle und kommt erst nach mehreren Takten wieder auf die Eins. Ändere die <b>Länge</b> einer Spur.",
+  modulation: "<b>Metrische Modulation</b>: Ein Notenwert aus dem alten Tempo wird zum Grundschlag des neuen Tempos. Unten schaltest du zwischen Abschnitt A und B hin und her; der Brücken-Klick bleibt über den Wechsel gleich schnell.",
+};
+
+function ladeBeispiel(key) {
+  const b = BEISPIEL_FLACH[key];
+  if (!b) return;
+  st.spuren = b[4]();
+  st.bpm = b[3];
+  st.thema = b[2];
+  if (b[2] === "modulation") st.mod = { ...st.mod, an: true, ...(b[5] || {}) };
+  else st.mod.an = false;
+  alles();
+}
+
+// ---------- Audio ----------
+let ctx = null, master = null, rausch = null;
+function audio() {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = 0.7;
+    const komp = ctx.createDynamicsCompressor(); komp.threshold.value = -10;
+    master.connect(komp); komp.connect(ctx.destination);
+    rausch = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const d = rausch.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  if (ctx.state === "suspended") ctx.resume();
+  return ctx;
+}
+function huelle(t, v, ab) { const g = ctx.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0008, t + ab); g.connect(master); return g; }
+function ton(typ, f, t, v, ab, f2) {
+  const o = ctx.createOscillator(); o.type = typ; o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + ab * 0.6);
+  o.connect(huelle(t, v, ab)); o.start(t); o.stop(t + ab + 0.02);
+}
+function lärm(t, v, ab, filt, f, q = 1) {
+  const s = ctx.createBufferSource(); s.buffer = rausch;
+  const fl = ctx.createBiquadFilter(); fl.type = filt; fl.frequency.value = f; fl.Q.value = q;
+  s.connect(fl); fl.connect(huelle(t, v, ab)); s.start(t); s.stop(t + ab + 0.02);
+}
+function spiele(klang, t, v) {
+  switch (klang) {
+    case "kick": ton("sine", 160, t, v * 1.1, 0.32, 42); break;
+    case "snare": lärm(t, v * 0.7, 0.17, "bandpass", 1900, 0.8); ton("triangle", 200, t, v * 0.5, 0.09, 150); break;
+    case "hat": lärm(t, v * 0.5, 0.05, "highpass", 7500); break;
+    case "rim": ton("square", 1650, t, v * 0.18, 0.035); lärm(t, v * 0.25, 0.02, "bandpass", 3000, 3); break;
+    case "clap": [0, 0.011, 0.023].forEach((d, i) => lärm(t + d, v * (i === 2 ? 0.7 : 0.4), i === 2 ? 0.14 : 0.02, "bandpass", 1150, 1.2)); break;
+    case "bass": ton("sine", 55, t, v * 1.0, 0.38); ton("triangle", 110, t, v * 0.15, 0.12); break;
+    case "glocke": ton("sine", 880, t, v * 0.35, 0.6); ton("sine", 2310, t, v * 0.12, 0.25); break;
+    case "holz": ton("sine", 1100, t, v * 0.55, 0.06, 900); break;
+    case "klick": ton("sine", 2600, t, v * 0.35, 0.025); break;
+  }
+}
+
+// ---------- Ablauf ----------
+let laeuft = false, timer = null, takt = 0, taktStart = 0, brueckeNaechste = 0;
+const taktLog = [];   // {takt, start, dauer, tempo, teil: "A"|"B"|null}
+const ereignisse = []; // {t, sid, idx}
+const tipps = [];      // {winkel, zeit}
+const faktor = () => (MODULATIONEN.find((m) => m[0] === st.mod.art) || MODULATIONEN[0])[2];
+function taktInfo(n) {
+  if (!st.mod.an) return { tempo: st.bpm, teil: null, abschnittsStart: n === 0 };
+  const per = st.mod.a + st.mod.b, pos = n % per;
+  const B = pos >= st.mod.a;
+  return { tempo: B ? st.bpm * faktor() : st.bpm, teil: B ? "B" : "A", abschnittsStart: pos === 0 || pos === st.mod.a };
+}
+function planeTakt(n, t0) {
+  const info = taktInfo(n), dauer = (4 * 60) / info.tempo;
+  st.spuren.forEach((s) => {
+    for (let j = 0; j < s.teil; j++) {
+      const idx = (n * s.teil + j) % s.len;
+      if (!s.hits[idx]) continue;
+      const t = t0 + (j * dauer) / s.teil;
+      if (!s.stumm) spiele(s.klang, t, s.laut);
+      ereignisse.push({ t, sid: s.id, idx });
+    }
+  });
+  if (st.mod.an && st.mod.bruecke) {
+    const iv = 60 / (st.bpm * faktor());
+    if (info.abschnittsStart) brueckeNaechste = t0;
+    while (brueckeNaechste < t0 + dauer - 1e-4) { spiele("klick", brueckeNaechste, 0.6); brueckeNaechste += iv; }
+  }
+  taktLog.push({ takt: n, start: t0, dauer, tempo: info.tempo, teil: info.teil });
+  if (taktLog.length > 40) taktLog.shift();
+  if (ereignisse.length > 600) ereignisse.splice(0, ereignisse.length - 600);
+  return dauer;
+}
+function schritt() {
+  while (taktStart < ctx.currentTime + 0.15) { taktStart += planeTakt(takt, taktStart); takt++; }
+}
+function startStopp() {
+  audio();
+  if (laeuft) {
+    laeuft = false; clearInterval(timer); timer = null;
+    master.gain.setTargetAtTime(0, ctx.currentTime, 0.01);
+    setTimeout(() => { if (!laeuft) master.gain.value = 0.7; }, 120);
+  } else {
+    laeuft = true; takt = 0; taktStart = ctx.currentTime + 0.06; taktLog.length = 0; ereignisse.length = 0;
+    master.gain.cancelScheduledValues(ctx.currentTime); master.gain.value = 0.7;
+    schritt(); timer = setInterval(schritt, 25);
+  }
+  el("start").textContent = laeuft ? "■ Stopp" : "▶ Start";
+  el("start").classList.toggle("an", laeuft);
+}
+// aktuelle Position: {takt, frac, info}
+function position() {
+  if (!laeuft || !ctx) return null;
+  const jetzt = ctx.currentTime;
+  for (let i = taktLog.length - 1; i >= 0; i--) {
+    const b = taktLog[i];
+    if (b.start <= jetzt) return { takt: b.takt, frac: Math.min(1, (jetzt - b.start) / b.dauer), b };
+  }
+  return null;
+}
+
+// ---------- Zyklus ----------
+function zyklus() {
+  const sp = st.spuren.filter((s) => !s.stumm);
+  if (!sp.length) return { L: 1, ticks: 1, takte: 1, zyklTicks: 1 };
+  const L = sp.reduce((a, s) => kgV(a, s.teil), 1);               // Ticks pro Takt
+  const zyklTicks = sp.reduce((a, s) => kgV(a, (s.len * L) / s.teil), 1);  // bis alle Muster gleichzeitig neu beginnen
+  const ganz = kgV(zyklTicks, L);                                  // ... und das auf einer Eins
+  return { L, zyklTicks, ticks: ganz, takte: ganz / L };
+}
+function befund() {
+  const z = zyklus(), sp = st.spuren.filter((s) => !s.stumm);
+  if (!sp.length) return "Alle Spuren stumm.";
+  const zeilen = [];
+  const teile = [...new Set(sp.map((s) => s.teil))];
+  if (teile.length > 1) zeilen.push(`Teilungen ${sp.map((s) => s.teil).join(" : ")} pro Takt → gemeinsames Raster ${z.L} pro Takt`);
+  const laengen = sp.filter((s) => s.len !== s.teil);
+  if (laengen.length) zeilen.push(laengen.map((s) => `${KLAENGE[s.klang]} ${s.len} von ${s.teil} = ${bruch(s.len, s.teil)} Takt`).join(" · "));
+  // gemeinsame Schläge im Zyklus
+  const zaehl = new Map();
+  sp.forEach((s) => {
+    const schritt = z.L / s.teil;
+    for (let c = 0; c * schritt < z.ticks; c++) if (s.hits[c % s.len]) zaehl.set(c * schritt, (zaehl.get(c * schritt) || 0) + 1);
+  });
+  let zwei = 0, alle = 0;
+  zaehl.forEach((v) => { if (v >= 2) zwei++; if (v === sp.length && sp.length > 1) alle++; });
+  zeilen.push(`Alle wieder zusammen auf der Eins nach ${z.takte} Takt${z.takte === 1 ? "" : "en"} · ${zwei} Stellen mit ≥2 Spuren${sp.length > 2 ? ` · ${alle} mit allen` : ""}`);
+  return zeilen.join("<br>");
+}
+
+// ---------- Oberfläche ----------
+const el = (id) => document.getElementById(id);
+function optionen(sel, liste, wert) { sel.innerHTML = ""; liste.forEach(([v, t]) => { const o = document.createElement("option"); o.value = v; o.textContent = t; if (String(v) === String(wert)) o.selected = true; sel.appendChild(o); }); }
+function baueAuswahl() {
+  const b = el("beispiel"); b.innerHTML = "";
+  const leer = document.createElement("option"); leer.value = ""; leer.textContent = "– wählen –"; b.appendChild(leer);
+  BEISPIELE.forEach(([g, l]) => { const og = document.createElement("optgroup"); og.label = g; l.forEach(([k, n]) => { const o = document.createElement("option"); o.value = k; o.textContent = n; og.appendChild(o); }); b.appendChild(og); });
+  const d = el("dnbVorlage"); d.innerHTML = "";
+  const l2 = document.createElement("option"); l2.value = ""; l2.textContent = "– laden –"; d.appendChild(l2);
+  DNB.forEach(([g, o]) => { const og = document.createElement("optgroup"); og.label = g; Object.entries(o).forEach(([k, v]) => { const x = document.createElement("option"); x.value = k; x.textContent = v.n; og.appendChild(x); }); d.appendChild(og); });
+  optionen(el("modArt"), MODULATIONEN.map((m) => [m[0], m[1]]), st.mod.art);
+}
+const zellenRefs = new Map();  // sid -> [buttons]
+function baueSpuren() {
+  const box = el("spuren"); box.innerHTML = ""; zellenRefs.clear();
+  st.spuren.forEach((s, si) => {
+    const farbe = FARBEN[si % FARBEN.length];
+    const d = document.createElement("div"); d.className = "spur" + (s.stumm ? " stumm" : ""); d.style.setProperty("--farbe", farbe);
+    const kopf = document.createElement("div"); kopf.className = "spurkopf";
+    const p = document.createElement("button"); p.type = "button"; p.className = "punkt"; p.title = s.stumm ? "Spur einschalten" : "Spur stummschalten"; p.setAttribute("aria-label", p.title);
+    p.onclick = () => { s.stumm = !s.stumm; alles(); };
+    kopf.appendChild(p);
+    const mk = (lbl, inner, id) => { const l = document.createElement("label"); l.className = "feld"; l.htmlFor = id; l.append(lbl, inner); kopf.appendChild(l); return inner; };
+    const kl = document.createElement("select"); kl.id = "kl" + s.id; optionen(kl, Object.entries(KLAENGE), s.klang);
+    kl.onchange = () => { s.klang = kl.value; speichere(); };
+    mk("Klang", kl, kl.id);
+    const tl = document.createElement("select"); tl.id = "tl" + s.id; optionen(tl, TEILUNGEN.map((x) => [x, "÷" + x]), s.teil);
+    tl.title = "Teilung: Zellen pro Takt";
+    tl.onchange = () => {
+      const alleAn = s.hits.every(Boolean), k = s.hits.filter(Boolean).length;
+      s.teil = Number(tl.value); s.len = Math.min(MAX_ZELLEN, s.teil);
+      s.hits = alleAn ? Array(s.len).fill(true) : euklid(Math.min(k, s.len), s.len);
+      alles();
+    };
+    mk("Teilung", tl, tl.id);
+    const ln = document.createElement("select"); ln.id = "ln" + s.id; optionen(ln, Array.from({ length: MAX_ZELLEN }, (_, i) => [i + 1, "L" + (i + 1)]), s.len);
+    ln.title = "Länge: Zellen im Muster (anders als die Teilung = Polymetrik)";
+    ln.onchange = () => { const L = Number(ln.value); s.hits = Array.from({ length: L }, (_, i) => !!s.hits[i]); s.len = L; alles(); };
+    mk("Länge", ln, ln.id);
+    const k = document.createElement("input"); k.type = "number"; k.min = 0; k.max = s.len; k.value = s.hits.filter(Boolean).length; k.id = "k" + s.id; k.style.width = "60px";
+    k.title = "Anzahl Schläge, gleichmäßig verteilt (euklidisch)";
+    k.onchange = () => { s.hits = euklid(Math.max(0, Math.min(s.len, Number(k.value) || 0)), s.len); alles(); };
+    mk("Schläge", k, k.id);
+    const btn = (txt, title, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = "knopf klein"; b.textContent = txt; b.title = title; b.setAttribute("aria-label", title); b.onclick = fn; kopf.appendChild(b); return b; };
+    btn("◀", "Muster eine Zelle nach links drehen", () => { s.hits.push(s.hits.shift()); alles(); });
+    btn("▶", "Muster eine Zelle nach rechts drehen", () => { s.hits.unshift(s.hits.pop()); alles(); });
+    const lt = document.createElement("input"); lt.type = "range"; lt.min = 0; lt.max = 100; lt.value = Math.round(s.laut * 100); lt.id = "lt" + s.id; lt.style.width = "90px";
+    lt.oninput = () => { s.laut = lt.value / 100; speichere(); };
+    mk("Lautst.", lt, lt.id);
+    if (st.spuren.length > 1) btn("✕", "Spur entfernen", () => { st.spuren = st.spuren.filter((x) => x !== s); alles(); });
+    d.appendChild(kopf);
+    const z = document.createElement("div"); z.className = "zellen"; z.style.gridTemplateColumns = `repeat(${Math.min(s.len, 16)}, minmax(0, 1fr))`;
+    const refs = [];
+    for (let i = 0; i < s.len; i++) {
+      const c = document.createElement("button"); c.type = "button";
+      c.className = "zelle" + (s.hits[i] ? " an" : "") + ((i * 4) % s.teil === 0 ? " eins" : "");
+      c.setAttribute("aria-label", `Zelle ${i + 1}`); c.setAttribute("aria-pressed", s.hits[i] ? "true" : "false");
+      const sp = document.createElement("span"); sp.textContent = i + 1; c.appendChild(sp);
+      c.onclick = () => { s.hits[i] = !s.hits[i]; alles(); };
+      z.appendChild(c); refs.push(c);
+    }
+    zellenRefs.set(s.id, refs);
+    d.appendChild(z);
+    box.appendChild(d);
+  });
+}
+function baueKopf() {
+  el("tempo").value = st.bpm;
+  el("bpmAnz").textContent = String(st.bpm).replace(".", ",");
+  el("kTakt").classList.toggle("an", st.kreis === "takt");
+  el("kMuster").classList.toggle("an", st.kreis === "muster");
+  el("erklaerung").innerHTML = ERKL[st.thema] || ERKL.rhythmus;
+  el("befund").innerHTML = befund();
+  const z = zyklus();
+  el("zyklusAnz").textContent = `${z.takte} Takt${z.takte === 1 ? "" : "e"} bis alle wieder zusammen sind${z.takte > 128 ? " (gezeigt: die ersten 128)" : ""}`;
+  el("modAn").textContent = st.mod.an ? "an" : "aus";
+  el("modAn").classList.toggle("an", st.mod.an);
+  el("modbox").hidden = !st.mod.an;
+  el("modArt").value = st.mod.art; el("modA").value = st.mod.a; el("modB").value = st.mod.b;
+  el("bruecke").classList.toggle("an", st.mod.bruecke);
+  el("bruecke").textContent = st.mod.bruecke ? "Brücken-Klick an" : "Brücken-Klick aus";
+  const f = faktor();
+  el("modTempi").textContent = `A ${fmt(st.bpm)} BPM → B ${fmt(st.bpm * f)} BPM`;
+}
+const fmt = (x) => (Math.round(x * 10) / 10).toString().replace(".", ",");
+function alles() { baueKopf(); baueSpuren(); speichere(); groessen(); }
+function speichere() { try { localStorage.setItem("poly-labor.v1", JSON.stringify(st)); } catch (e) { /* egal */ } }
+function lade() {
+  try {
+    const x = JSON.parse(localStorage.getItem("poly-labor.v1") || "null");
+    if (x && Array.isArray(x.spuren) && x.spuren.length) {
+      st = { ...st, ...x, mod: { ...st.mod, ...(x.mod || {}) } };
+      st.spuren.forEach((s) => { s.id = nextId++; });
+      return true;
+    }
+  } catch (e) { /* egal */ }
+  return false;
+}
+
+// ---------- Zeichnen ----------
+const kreis = el("kreis"), verlauf = el("verlauf"), modband = el("modband");
+let dpr = 1;
+function groessen() {
+  dpr = window.devicePixelRatio || 1;
+  const w = kreis.clientWidth; kreis.width = w * dpr; kreis.height = w * dpr;
+  const z = zyklus(), takte = Math.min(128, z.takte);
+  const box = verlauf.parentElement.clientWidth;
+  const vw = Math.max(box, takte * 56 + 90), vh = 26 + st.spuren.length * 24 + 8;
+  verlauf.style.width = vw + "px"; verlauf.style.height = vh + "px"; verlauf.width = vw * dpr; verlauf.height = vh * dpr;
+  if (st.mod.an) {
+    const mw = modband.parentElement.clientWidth; modband.style.width = mw + "px"; modband.style.height = "110px";
+    modband.width = mw * dpr; modband.height = 110 * dpr;
+  }
+  zeichneVerlaufStatisch();
+}
+let verlaufBild = null;
+function zeichneVerlaufStatisch() {
+  const g = verlauf.getContext("2d"), W = verlauf.width / dpr, H = verlauf.height / dpr;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const z = zyklus(), takte = Math.min(128, z.takte), x0 = 90, bw = (W - x0 - 8) / takte, top = 22, rh = 24;
+  g.font = "11px 'IBM Plex Mono', monospace"; g.textBaseline = "middle";
+  for (let b = 0; b < takte; b++) {
+    const x = x0 + b * bw;
+    g.fillStyle = b % 2 ? "#15171c" : "#181a20"; g.fillRect(x, top, bw, H - top - 4);
+    g.fillStyle = "#6b7080"; g.fillText(String(b + 1), x + 3, 11);
+  }
+  // Zusammentreffen
+  const sp = st.spuren.filter((s) => !s.stumm), zaehl = new Map(), tps = z.L * takte;
+  sp.forEach((s) => { const sch = z.L / s.teil; for (let c = 0; c * sch < tps; c++) if (s.hits[c % s.len]) zaehl.set(c * sch, (zaehl.get(c * sch) || 0) + 1); });
+  zaehl.forEach((v, tick) => {
+    if (v < 2) return;
+    const x = x0 + (tick / z.L) * bw;
+    const alle = v === sp.length && sp.length > 1;
+    g.fillStyle = alle ? "rgba(253,230,138,.38)" : "rgba(253,230,138,.16)";
+    g.fillRect(x - (alle ? 2 : 0.5), top, alle ? 4 : 1.5, H - top - 4);
+  });
+  st.spuren.forEach((s, si) => {
+    const y = top + si * rh + rh / 2;
+    g.fillStyle = "#8b8f9c"; g.fillText(KLAENGE[s.klang] + (s.len !== s.teil ? ` ${s.len}/${s.teil}` : ` ÷${s.teil}`), 6, y);
+    g.fillStyle = FARBEN[si % FARBEN.length]; g.globalAlpha = s.stumm ? 0.25 : 1;
+    const cw = bw / s.teil;
+    for (let c = 0; c < takte * s.teil; c++) {
+      const idx = c % s.len;
+      if (!s.hits[idx]) continue;
+      const x = x0 + c * cw;
+      g.fillRect(x, y - 7, Math.max(2, Math.min(cw - 1, 8)), 14);
+      if (idx === 0 && s.len !== s.teil) { g.fillStyle = "#fff"; g.fillRect(x, y - 9, 2, 18); g.fillStyle = FARBEN[si % FARBEN.length]; }
+    }
+    g.globalAlpha = 1;
+  });
+  verlaufBild = g.getImageData(0, 0, verlauf.width, verlauf.height);
+}
+function zeichneVerlauf(pos) {
+  if (!verlaufBild) return;
+  const g = verlauf.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0); g.putImageData(verlaufBild, 0, 0);
+  if (!pos) return;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = verlauf.width / dpr, H = verlauf.height / dpr, z = zyklus(), takte = Math.min(128, z.takte), x0 = 90, bw = (W - x0 - 8) / takte;
+  const t = (pos.takt % z.takte) + pos.frac;
+  if (t > takte) return;
+  const x = x0 + t * bw;
+  g.fillStyle = "#ffffff"; g.fillRect(x - 1, 18, 2, H - 20);
+}
+function zeichneKreis(pos) {
+  const g = kreis.getContext("2d"), W = kreis.width / dpr;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, W);
+  const c = W / 2, rMax = W / 2 - 22, n = st.spuren.length, rMin = Math.max(30, rMax * 0.28);
+  const jetzt = ctx ? ctx.currentTime : 0;
+  // Viertel-Marken
+  for (let q = 0; q < 16; q++) {
+    const a = (q / 16) * Math.PI * 2 - Math.PI / 2, lang = q % 4 === 0;
+    g.strokeStyle = lang ? "#5b6070" : "#2c2f38"; g.lineWidth = lang ? 2 : 1;
+    g.beginPath(); g.moveTo(c + Math.cos(a) * (rMax + 6), c + Math.sin(a) * (rMax + 6)); g.lineTo(c + Math.cos(a) * (rMax + (lang ? 16 : 11)), c + Math.sin(a) * (rMax + (lang ? 16 : 11))); g.stroke();
+  }
+  st.spuren.forEach((s, si) => {
+    const r = n === 1 ? rMax : rMax - (si * (rMax - rMin)) / (n - 1);
+    const farbe = FARBEN[si % FARBEN.length];
+    g.globalAlpha = s.stumm ? 0.25 : 1;
+    g.strokeStyle = "#2c2f38"; g.lineWidth = 1; g.beginPath(); g.arc(c, c, r, 0, Math.PI * 2); g.stroke();
+    // Punkte dieses Rings
+    let punkte;
+    const tk = pos ? pos.takt : 0;
+    if (st.kreis === "takt") {
+      punkte = Array.from({ length: s.teil }, (_, j) => { const idx = (tk * s.teil + j) % s.len; return { a: j / s.teil, an: s.hits[idx], idx }; });
+    } else {
+      punkte = Array.from({ length: s.len }, (_, i) => ({ a: i / s.len, an: s.hits[i], idx: i }));
+    }
+    // Vieleck
+    const an = punkte.filter((p) => p.an);
+    if (an.length > 1) {
+      g.strokeStyle = farbe; g.globalAlpha = (s.stumm ? 0.15 : 0.45); g.lineWidth = 1.5; g.beginPath();
+      an.forEach((p, i) => { const a = p.a * Math.PI * 2 - Math.PI / 2, x = c + Math.cos(a) * r, y = c + Math.sin(a) * r; if (i) g.lineTo(x, y); else g.moveTo(x, y); });
+      g.closePath(); g.stroke(); g.globalAlpha = s.stumm ? 0.25 : 1;
+    }
+    punkte.forEach((p) => {
+      const a = p.a * Math.PI * 2 - Math.PI / 2, x = c + Math.cos(a) * r, y = c + Math.sin(a) * r;
+      const blitz = ereignisse.some((e) => e.sid === s.id && e.idx === p.idx && jetzt >= e.t && jetzt - e.t < 0.12);
+      g.beginPath(); g.arc(x, y, blitz ? 9 : p.an ? 6 : 2.5, 0, Math.PI * 2);
+      g.fillStyle = p.an ? (blitz ? "#ffffff" : farbe) : "#3a3e4a"; g.fill();
+    });
+    // Zeiger je Ring
+    if (pos) {
+      let f;
+      if (st.kreis === "takt") f = pos.frac;
+      else { const zelle = pos.takt * s.teil + pos.frac * s.teil; f = (zelle % s.len) / s.len; }
+      const a = f * Math.PI * 2 - Math.PI / 2;
+      g.strokeStyle = farbe; g.lineWidth = 2; g.globalAlpha = s.stumm ? 0.2 : 0.9;
+      g.beginPath(); g.arc(c, c, r, a - 0.08, a + 0.08); g.stroke();
+    }
+    g.globalAlpha = 1;
+  });
+  if (pos && st.kreis === "takt") {
+    const a = pos.frac * Math.PI * 2 - Math.PI / 2;
+    g.strokeStyle = "rgba(255,255,255,.55)"; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(c, c); g.lineTo(c + Math.cos(a) * (rMax + 4), c + Math.sin(a) * (rMax + 4)); g.stroke();
+  }
+  // Mitklopfen
+  const nun = performance.now();
+  for (let i = tipps.length - 1; i >= 0; i--) {
+    const tp = tipps[i], alt = (nun - tp.zeit) / 4000;
+    if (alt > 1) { tipps.splice(i, 1); continue; }
+    const a = tp.winkel * Math.PI * 2 - Math.PI / 2;
+    g.strokeStyle = `rgba(255,255,255,${1 - alt})`; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(c + Math.cos(a) * (rMax + 4), c + Math.sin(a) * (rMax + 4)); g.lineTo(c + Math.cos(a) * (rMax + 20), c + Math.sin(a) * (rMax + 20)); g.stroke();
+  }
+  // Mitte: Takt und Tempo
+  g.fillStyle = "#8b8f9c"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.font = "600 13px 'IBM Plex Mono', monospace";
+  if (pos) {
+    g.fillText(`Takt ${pos.takt + 1}`, c, c - 10);
+    g.fillStyle = pos.b.teil === "B" ? "#7dd3fc" : "#e6e7ec";
+    g.fillText(`${fmt(pos.b.tempo)} BPM${pos.b.teil ? " · " + pos.b.teil : ""}`, c, c + 10);
+  } else g.fillText("▶ Start", c, c);
+  g.textAlign = "start";
+}
+function zeichneModband(pos) {
+  if (!st.mod.an) return;
+  const g = modband.getContext("2d"), W = modband.width / dpr, H = 110;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const f = faktor(), dA = (4 * 60) / st.bpm, dB = dA / f, per = st.mod.a + st.mod.b;
+  const gesamt = st.mod.a * dA + st.mod.b * dB, sx = (W - 20) / gesamt, x0 = 10;
+  const abschnitt = (start, takte, dauer, tempo, name, farbe) => {
+    const x = x0 + start * sx, w = takte * dauer * sx;
+    g.fillStyle = farbe; g.fillRect(x, 18, w, 54);
+    g.fillStyle = "#e6e7ec"; g.font = "600 12px 'IBM Plex Mono', monospace"; g.textBaseline = "middle";
+    g.fillText(`${name} · ${fmt(tempo)} BPM`, x + 6, 10);
+    for (let b = 0; b <= takte * 4; b++) {
+      const bx = x + (b * dauer * sx) / 4;
+      g.fillStyle = b % 4 === 0 ? "#8b8f9c" : "#4b5060"; g.fillRect(bx, b % 4 === 0 ? 18 : 30, b % 4 === 0 ? 2 : 1, b % 4 === 0 ? 54 : 30);
+    }
+  };
+  abschnitt(0, st.mod.a, dA, st.bpm, "A", "#1d2027");
+  abschnitt(st.mod.a * dA, st.mod.b, dB, st.bpm * f, "B", "#14283a");
+  // Brücken-Klick
+  const iv = 60 / (st.bpm * f);
+  g.fillStyle = "#7dd3fc";
+  const punkte = (s0, s1) => { for (let t = s0; t < s1 - 1e-6; t += iv) { g.beginPath(); g.arc(x0 + t * sx, 88, 3.2, 0, Math.PI * 2); g.fill(); } };
+  punkte(0, st.mod.a * dA); punkte(st.mod.a * dA, gesamt);
+  g.fillStyle = "#8b8f9c"; g.font = "11px 'IBM Plex Mono', monospace"; g.fillText("Brücken-Klick", x0, 102);
+  if (pos) {
+    const im = pos.takt % per;
+    let t = im < st.mod.a ? (im + pos.frac) * dA : st.mod.a * dA + (im - st.mod.a + pos.frac) * dB;
+    g.fillStyle = "#fff"; g.fillRect(x0 + t * sx - 1, 16, 2, 80);
+  }
+}
+let letzteZellen = new Map();
+function zellenJetzt(pos) {
+  st.spuren.forEach((s) => {
+    const refs = zellenRefs.get(s.id); if (!refs) return;
+    const idx = pos ? Math.floor(pos.takt * s.teil + pos.frac * s.teil) % s.len : -1;
+    const alt = letzteZellen.get(s.id);
+    if (alt === idx) return;
+    if (alt != null && refs[alt]) refs[alt].classList.remove("jetzt");
+    if (idx >= 0 && refs[idx]) refs[idx].classList.add("jetzt");
+    letzteZellen.set(s.id, idx);
+  });
+}
+function bild() {
+  const pos = position();
+  zeichneKreis(pos); zeichneVerlauf(pos); zeichneModband(pos); zellenJetzt(pos);
+  requestAnimationFrame(bild);
+}
+
+// ---------- Bedienung ----------
+function tippen() {
+  const pos = position();
+  if (!pos) return;
+  let w;
+  if (st.kreis === "takt") w = pos.frac;
+  else { const s = st.spuren[0]; w = ((pos.takt * s.teil + pos.frac * s.teil) % s.len) / s.len; }
+  tipps.push({ winkel: w, zeit: performance.now() });
+  audio(); spiele("klick", ctx.currentTime, 0.4);
+}
+el("start").onclick = startStopp;
+el("tempo").oninput = (e) => { st.bpm = Number(e.target.value); baueKopf(); speichere(); };
+document.querySelectorAll("[data-bpm]").forEach((b) => { b.onclick = () => { st.bpm = Number(b.dataset.bpm); baueKopf(); speichere(); }; });
+el("beispiel").onchange = (e) => { if (e.target.value) ladeBeispiel(e.target.value); };
+el("dnbVorlage").onchange = (e) => { const k = e.target.value; if (!k) return; const rest = st.spuren.filter((s, i) => i >= 4); st.spuren = [...dnbSpuren(k), ...rest]; alles(); e.target.value = ""; };
+el("kTakt").onclick = () => { st.kreis = "takt"; baueKopf(); speichere(); };
+el("kMuster").onclick = () => { st.kreis = "muster"; baueKopf(); speichere(); };
+el("neueSpur").onclick = () => { if (st.spuren.length >= 6) return; st.spuren.push(spur("rim", 3, 3, [true, true, true], 0.6)); alles(); };
+el("modAn").onclick = () => { st.mod.an = !st.mod.an; if (st.mod.an) st.thema = "modulation"; alles(); };
+el("modArt").onchange = (e) => { st.mod.art = e.target.value; alles(); };
+el("modA").onchange = (e) => { st.mod.a = Math.max(1, Math.min(16, Number(e.target.value) || 1)); alles(); };
+el("modB").onchange = (e) => { st.mod.b = Math.max(1, Math.min(16, Number(e.target.value) || 1)); alles(); };
+el("bruecke").onclick = () => { st.mod.bruecke = !st.mod.bruecke; baueKopf(); speichere(); };
+el("tipp").addEventListener("pointerdown", (e) => { e.preventDefault(); tippen(); });
+window.addEventListener("keydown", (e) => {
+  const tag = e.target.tagName;
+  if (tag === "INPUT" || tag === "SELECT") return;
+  if (e.code === "Space") { e.preventDefault(); startStopp(); }
+  else if (e.key === "t" || e.key === "T") tippen();
+});
+window.addEventListener("keyup", (e) => { if (e.code === "Space" && e.target.tagName === "BUTTON") e.preventDefault(); });
+window.addEventListener("resize", groessen);
+
+baueAuswahl();
+if (!lade()) ladeBeispiel("p34"); else alles();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(groessen);
+requestAnimationFrame(bild);
+</script>
+</body>
+</html>
