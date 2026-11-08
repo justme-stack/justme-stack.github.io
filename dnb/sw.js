@@ -73,8 +73,12 @@ self.addEventListener("fetch", (e) => {
   }
   if (url.pathname.startsWith(BASIS)) {
     const seite = e.request.mode === "navigate";
+    // Startseite immer frisch vom Server (am Browser-Zwischenspeicher vorbei): sonst
+    // haelt die App auf dem Home-Bildschirm eine alte index.html fest und laedt nie
+    // die neue Fassung (iPad zeigte am 08.11.2026 noch den Stand vom 05.11.).
+    // Die Skripte haben einen Hash im Namen und duerfen normal zwischengespeichert werden.
     e.respondWith(
-      fetch(e.request)
+      (seite ? fetch(e.request.url, { cache: "no-store", credentials: "same-origin" }) : fetch(e.request))
         .then((res) => {
           if (res.ok) {
             // SOFORT klonen: ist die Antwort erst an die Seite uebergeben, laesst
